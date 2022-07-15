@@ -91,9 +91,58 @@ function load_email(email) {
             <div class="mb-1"><strong>To: </strong>${email.recipients}</div>
             <div class="mb-1"><strong>Subject: </strong>${email.subject}</div>
             <div class="mb-1"><strong>Timestamp: </strong>${email.timestamp}</div>
-            <hr>
+            <hr id="division">
             <div>${email.body}</div>
         `
+
+        // If user recieved the email
+        fetch("/emails/inbox")
+        .then(response => response.json())
+        .then(emails => {
+            fetch("/emails/archive")
+            .then(response => response.json())
+            .then(archive => {
+                archive.forEach(archived => {
+                    emails.push(archived);
+                });
+                const emails_id = [];
+                emails.forEach(email => {emails_id.push(email.id)});
+                if (emails_id.includes(email.id)) {
+
+                    // Archive button
+                    const button = document.createElement("button");
+                    button.classList.add("btn", "btn-sm")
+                    if (email.archived == true) {
+                        button.classList.add("btn-secondary")
+                        button.innerHTML = "Unarchive";
+                        button.addEventListener("click", () => {
+                            fetch(`emails/${email.id}`, {
+                                method: "PUT",
+                                body: JSON.stringify({
+                                    archived: false
+                                })
+                            })
+                            load_mailbox("inbox");
+                        });
+                    }
+                    else {
+                        button.classList.add("btn-outline-secondary")
+                        button.innerHTML = "Archive";
+                        button.addEventListener("click", () => {
+                            fetch(`emails/${email.id}`, {
+                                method: "PUT",
+                                body: JSON.stringify({
+                                    archived: true
+                                })
+                            })
+                            load_mailbox("inbox");
+                        });
+                    }
+                    document.querySelector("#email-view").insertBefore(button, document.querySelector("#division"))
+
+                }
+            });
+        });
     })
 
     // Mark email as read
