@@ -50,4 +50,15 @@ function load_mailbox(mailbox) {
     // Show the mailbox name
     document.querySelector('#emails-view').innerHTML = `<h3>${mailbox.charAt(0).toUpperCase() + mailbox.slice(1)}</h3>`;
 
+    // Load mailbox
+    fetch(`/emails/${mailbox}`)
+    .then(response => response.json())
+    .then(emails => {
+        emails.forEach(email => {
+            const element = document.createElement("div");
+            element.innerHTML = `<strong>${email.sender}</strong><span>${email.subject}</span><span>${email.timestamp}</span>`;
+            document.querySelector('#emails-view').append(element);
+        });
+    });
+
 }
