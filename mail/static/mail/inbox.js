@@ -86,14 +86,25 @@ function load_email(email) {
     fetch(`/emails/${email.id}`)
     .then(response => response.json())
     .then(email => {
+        let body = email.body.replace(/(?:\r\n|\r|\n)/g, '<br>');
         document.querySelector('#email-view').innerHTML = `
             <div class="mb-1"><strong>From: </strong>${email.sender}</div>
             <div class="mb-1"><strong>To: </strong>${email.recipients}</div>
             <div class="mb-1"><strong>Subject: </strong>${email.subject}</div>
             <div class="mb-1"><strong>Timestamp: </strong>${email.timestamp}</div>
             <hr id="division">
-            <div>${email.body}</div>
+            <div>${body}</div>
         `
+
+        // Reply button
+        const reply = document.createElement("button");
+        reply.classList.add("btn", "btn-outline-secondary", "btn-sm");
+        reply.innerHTML = "Reply";
+        reply.setAttribute("id", "reply");
+        reply.addEventListener("click", () => {
+            reply_email(email);
+        });
+        document.querySelector("#email-view").insertBefore(reply, document.querySelector("#division"));
 
         // If user recieved the email
         fetch("/emails/inbox")
@@ -110,12 +121,12 @@ function load_email(email) {
                 if (emails_id.includes(email.id)) {
 
                     // Archive button
-                    const button = document.createElement("button");
-                    button.classList.add("btn", "btn-sm")
+                    const archive = document.createElement("button");
+                    archive.classList.add("btn", "btn-sm", "me-2");
                     if (email.archived == true) {
-                        button.classList.add("btn-secondary")
-                        button.innerHTML = "Unarchive";
-                        button.addEventListener("click", () => {
+                        archive.classList.add("btn-secondary");
+                        archive.innerHTML = "Unarchive";
+                        archive.addEventListener("click", () => {
                             fetch(`emails/${email.id}`, {
                                 method: "PUT",
                                 body: JSON.stringify({
@@ -126,9 +137,9 @@ function load_email(email) {
                         });
                     }
                     else {
-                        button.classList.add("btn-outline-secondary")
-                        button.innerHTML = "Archive";
-                        button.addEventListener("click", () => {
+                        archive.classList.add("btn-outline-secondary")
+                        archive.innerHTML = "Archive";
+                        archive.addEventListener("click", () => {
                             fetch(`emails/${email.id}`, {
                                 method: "PUT",
                                 body: JSON.stringify({
@@ -138,7 +149,7 @@ function load_email(email) {
                             load_mailbox("inbox");
                         });
                     }
-                    document.querySelector("#email-view").insertBefore(button, document.querySelector("#division"))
+                    document.querySelector("#email-view").insertBefore(archive, document.querySelector("#reply"))
 
                 }
             });
@@ -152,5 +163,22 @@ function load_email(email) {
             read: true
         })
     })
+
+}
+
+
+function reply_email(email) {
+
+    compose_email(email);
+
+    // Pre-fill composition fields
+    document.querySelector('#compose-recipients').value = email.sender;
+    if (!email.subject.startsWith("Re: ")) {
+        document.querySelector('#compose-subject').value = `Re: ${email.subject}`;
+    }
+    else {
+        document.querySelector('#compose-subject').value = email.subject;
+    }
+    document.querySelector('#compose-body').value = `\n\nOn ${email.timestamp} ${email.sender} wrote:\n${email.body}`;
 
 }
