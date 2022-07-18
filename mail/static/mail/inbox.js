@@ -12,6 +12,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
+function alert(message) {
+
+    document.querySelector("#alert").innerHTML = `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <div>${message}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+
+}
+
+
 function compose_email() {
 
     // Show compose view and hide other views
@@ -25,8 +37,9 @@ function compose_email() {
     document.querySelector('#compose-body').value = '';
 
     // Send mail
-    document.querySelector("#compose-form").addEventListener("submit", () => {
+    document.querySelector("#compose-form").addEventListener("submit", (event) => {
 
+        event.preventDefault();
         fetch("/emails", {
             method: "POST",
             body: JSON.stringify({
@@ -35,8 +48,18 @@ function compose_email() {
                 body: document.querySelector("#compose-body").value
             })
         })
-        load_mailbox("sent");
+        .then(response => response.json())
+        .then(result => {
 
+            // Handle errors
+            if ("error" in result) {
+                alert(result.error);
+            }
+            else {
+                load_mailbox("sent");
+                return true;
+            }
+        });
     });
 
 }
@@ -56,20 +79,27 @@ function load_mailbox(mailbox) {
     fetch(`/emails/${mailbox}`)
     .then(response => response.json())
     .then(emails => {
-        emails.forEach(email => {
-            const element = document.createElement("div");
-            element.setAttribute("role", "button");
-            element.classList.add("d-flex", "border", "p-2", "cursor-pointer");
-            if (email.read == true) {
-                element.style.backgroundColor = "hsl(0, 0%, 92%)";
-            }
-            element.innerHTML = `
-                <strong>${email.sender}</strong>
-                <span class="ms-2">${email.subject}</span>
-                <span class="text-muted ms-auto">${email.timestamp}</span>`;
-            element.addEventListener("click", () => load_email(email))
-            document.querySelector('#emails-view').append(element);
-        });
+
+        // Handle errors
+        if ("error" in emails) {
+            alert(emails.error);
+        }
+        else {
+            emails.forEach(email => {
+                const element = document.createElement("div");
+                element.setAttribute("role", "button");
+                element.classList.add("d-flex", "border", "p-2", "cursor-pointer");
+                if (email.read == true) {
+                    element.style.backgroundColor = "hsl(0, 0%, 92%)";
+                }
+                element.innerHTML = `
+                    <strong>${email.sender}</strong>
+                    <span class="ms-2">${email.subject}</span>
+                    <span class="text-muted ms-auto">${email.timestamp}</span>`;
+                element.addEventListener("click", () => load_email(email))
+                document.querySelector('#emails-view').append(element);
+            });
+        }
     });
 
 }
@@ -86,82 +116,89 @@ function load_email(email) {
     fetch(`/emails/${email.id}`)
     .then(response => response.json())
     .then(email => {
-        let body = email.body.replace(/(?:\r\n|\r|\n)/g, '<br>');
-        document.querySelector('#email-view').innerHTML = `
-            <div class="mb-1"><strong>From: </strong>${email.sender}</div>
-            <div class="mb-1"><strong>To: </strong>${email.recipients}</div>
-            <div class="mb-1"><strong>Subject: </strong>${email.subject}</div>
-            <div class="mb-1"><strong>Timestamp: </strong>${email.timestamp}</div>
-            <hr id="division">
-            <div>${body}</div>
-        `
 
-        // Reply button
-        const reply = document.createElement("button");
-        reply.classList.add("btn", "btn-outline-secondary", "btn-sm");
-        reply.innerHTML = "Reply";
-        reply.setAttribute("id", "reply");
-        reply.addEventListener("click", () => {
-            reply_email(email);
-        });
-        document.querySelector("#email-view").insertBefore(reply, document.querySelector("#division"));
-
-        // If user recieved the email
-        fetch("/emails/inbox")
-        .then(response => response.json())
-        .then(emails => {
-            fetch("/emails/archive")
-            .then(response => response.json())
-            .then(archive => {
-                archive.forEach(archived => {
-                    emails.push(archived);
-                });
-                const emails_id = [];
-                emails.forEach(email => {emails_id.push(email.id)});
-                if (emails_id.includes(email.id)) {
-
-                    // Archive button
-                    const archive = document.createElement("button");
-                    archive.classList.add("btn", "btn-sm", "me-2");
-                    if (email.archived == true) {
-                        archive.classList.add("btn-secondary");
-                        archive.innerHTML = "Unarchive";
-                        archive.addEventListener("click", () => {
-                            fetch(`emails/${email.id}`, {
-                                method: "PUT",
-                                body: JSON.stringify({
-                                    archived: false
-                                })
-                            })
-                            load_mailbox("inbox");
-                        });
-                    }
-                    else {
-                        archive.classList.add("btn-outline-secondary")
-                        archive.innerHTML = "Archive";
-                        archive.addEventListener("click", () => {
-                            fetch(`emails/${email.id}`, {
-                                method: "PUT",
-                                body: JSON.stringify({
-                                    archived: true
-                                })
-                            })
-                            load_mailbox("inbox");
-                        });
-                    }
-                    document.querySelector("#email-view").insertBefore(archive, document.querySelector("#reply"))
-
-                }
+        // Handle errors
+        if ("error" in email) {
+            alert(email.error);
+        }
+        else {
+            let body = email.body.replace(/(?:\r\n|\r|\n)/g, '<br>');
+            document.querySelector('#email-view').innerHTML = `
+                <div class="mb-1"><strong>From: </strong>${email.sender}</div>
+                <div class="mb-1"><strong>To: </strong>${email.recipients}</div>
+                <div class="mb-1"><strong>Subject: </strong>${email.subject}</div>
+                <div class="mb-1"><strong>Timestamp: </strong>${email.timestamp}</div>
+                <hr id="division">
+                <div>${body}</div>
+            `;
+    
+            // Reply button
+            const reply = document.createElement("button");
+            reply.classList.add("btn", "btn-outline-secondary", "btn-sm");
+            reply.innerHTML = "Reply";
+            reply.setAttribute("id", "reply");
+            reply.addEventListener("click", () => {
+                reply_email(email);
             });
-        });
-    })
+            document.querySelector("#email-view").insertBefore(reply, document.querySelector("#division"));
+    
+            // If user recieved the email
+            fetch("/emails/inbox")
+            .then(response => response.json())
+            .then(emails => {
+                fetch("/emails/archive")
+                .then(response => response.json())
+                .then(archive => {
+                    archive.forEach(archived => {
+                        emails.push(archived);
+                    });
+                    const emails_id = [];
+                    emails.forEach(email => {emails_id.push(email.id)});
+                    if (emails_id.includes(email.id)) {
+    
+                        // Archive button
+                        const archive = document.createElement("button");
+                        archive.classList.add("btn", "btn-sm", "me-2");
+                        if (email.archived == true) {
+                            archive.classList.add("btn-secondary");
+                            archive.innerHTML = "Unarchive";
+                            archive.addEventListener("click", () => {
+                                fetch(`emails/${email.id}`, {
+                                    method: "PUT",
+                                    body: JSON.stringify({
+                                        archived: false
+                                    })
+                                })
+                                load_mailbox("inbox");
+                            });
+                        }
+                        else {
+                            archive.classList.add("btn-outline-secondary")
+                            archive.innerHTML = "Archive";
+                            archive.addEventListener("click", () => {
+                                fetch(`emails/${email.id}`, {
+                                    method: "PUT",
+                                    body: JSON.stringify({
+                                        archived: true
+                                    })
+                                })
+                                load_mailbox("inbox");
+                            });
+                        }
+                        document.querySelector("#email-view").insertBefore(archive, document.querySelector("#reply"))
+    
+                    }
+                });
+            });
 
-    // Mark email as read
-    fetch(`/emails/${email.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-            read: true
-        })
+            // Mark email as read
+            fetch(`/emails/${email.id}`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    read: true
+                })
+            })
+        }
     })
 
 }
