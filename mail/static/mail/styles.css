@@ -1,3 +1,46 @@
+html, 
+body, 
+.auth {
+    height: 100%;
+}
+
 textarea {
     min-height: 400px;
+}
+
+.auth {
+    align-items: center;
+    background-color: #f5f5f5;
+    display: flex;
+    padding: 40px 0;
+}
+
+.form-signin {
+    max-width: 330px;
+    padding: 15px;
+  }
+  
+.form-signin .form-floating:focus-within {
+    z-index: 2;
+}
+  
+.top-field {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: -1px;
+}
+
+.middle-field {
+    border-radius: 0;
+    margin-bottom: -1px;
+}
+  
+.bottom-field {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    margin-bottom: 10px;
+}  
+
+.logo {
+    object-fit: contain;
 }
